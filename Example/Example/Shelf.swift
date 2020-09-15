@@ -20,13 +20,19 @@ extension Button {
 struct Shelf: View {
     typealias Row = CollectionRow<Int, String>
     
-    var rows: [Row] = {
+    @State var rows = Self.shuffledRows()
+    
+    private static func shuffledRows() -> [Row] {
         var rows = [Row]()
-        for i in 0..<100 {
-            rows.append(Row(section: i, items: (0..<40).map { "\(i), \($0)" }))
+        for i in (0..<40).shuffled() {
+            rows.append(Row(section: i, items: (0..<20).map { "\(i), \($0)" }))
         }
         return rows
-    }()
+    }
+    
+    private func shuffle() {
+        rows = Self.shuffledRows()
+    }
     
     var body: some View {
         CollectionView(rows: rows) { sectionIndex, layoutEnvironment in
@@ -43,7 +49,7 @@ struct Shelf: View {
             return section
         } cell: { indexPath, item in
             GeometryReader { geometry in
-                Button(action: {}) {
+                Button(action: shuffle) {
                     Text(item)
                         .foregroundColor(.black)
                         .frame(width: geometry.size.width, height: geometry.size.height)
