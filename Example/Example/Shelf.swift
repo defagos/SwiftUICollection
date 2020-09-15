@@ -10,7 +10,7 @@ import SwiftUICollection
 extension Button {
     func cardButtonStyle() -> some View {
         #if os(tvOS)
-        return self.buttonStyle(cardButtonStyle())
+        return self.buttonStyle(CardButtonStyle())
         #else
         return self
         #endif

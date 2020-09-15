@@ -129,7 +129,7 @@ public struct CollectionView<Section: Hashable, Item: Hashable, Cell: View>: UIV
         return Coordinator()
     }
     
-    public func makeUIView(context: Context) -> some UIView {
+    public func makeUIView(context: Context) -> UICollectionView {
         let cellIdentifier = "hostCell"
         
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout(context: context))
@@ -145,7 +145,7 @@ public struct CollectionView<Section: Hashable, Item: Hashable, Cell: View>: UIV
         return collectionView
     }
     
-    public func updateUIView(_ uiView: UIViewType, context: Context) {
+    public func updateUIView(_ uiView: UICollectionView, context: Context) {
         reloadData(context: context, animated: true)
     }
 }
