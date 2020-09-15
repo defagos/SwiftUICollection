@@ -71,18 +71,19 @@ public struct CollectionView<Section: Hashable, Item: Hashable, Cell: View>: UIV
                 }
             }
         }
-        
-        override var canBecomeFocused: Bool {
-            return false
-        }
     }
     
-    public class Coordinator {
+    public class Coordinator: NSObject, UICollectionViewDelegate {
         fileprivate typealias DataSource = UICollectionViewDiffableDataSource<Section, Item>
         
         fileprivate var dataSource: DataSource? = nil
         fileprivate var sectionLayoutProvider: ((Int, NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection)?
         fileprivate var rowsHash: Int? = nil
+        fileprivate var focusable: Bool = false
+        
+        public func collectionView(_ collectionView: UICollectionView, canFocusItemAt indexPath: IndexPath) -> Bool {
+            return focusable
+        }
     }
     
     let rows: [CollectionRow<Section, Item>]
@@ -112,7 +113,7 @@ public struct CollectionView<Section: Hashable, Item: Hashable, Cell: View>: UIV
         return snapshot
     }
     
-    private func reloadData(context: Context, animated: Bool = false) {
+    private func reloadData(in collectionView: UICollectionView, context: Context, animated: Bool = false) {
         let coordinator = context.coordinator
         coordinator.sectionLayoutProvider = self.sectionLayoutProvider
         
@@ -120,7 +121,12 @@ public struct CollectionView<Section: Hashable, Item: Hashable, Cell: View>: UIV
         
         let rowsHash = rows.hashValue
         if coordinator.rowsHash != rowsHash {
-            dataSource.apply(snapshot(), animatingDifferences: animated)
+            dataSource.apply(snapshot(), animatingDifferences: animated) {
+                coordinator.focusable = true
+                collectionView.setNeedsFocusUpdate()
+                collectionView.updateFocusIfNeeded()
+                coordinator.focusable = false
+            }
             coordinator.rowsHash = rowsHash
         }
     }
@@ -133,6 +139,7 @@ public struct CollectionView<Section: Hashable, Item: Hashable, Cell: View>: UIV
         let cellIdentifier = "hostCell"
         
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout(context: context))
+        collectionView.delegate = context.coordinator
         collectionView.register(HostCell.self, forCellWithReuseIdentifier: cellIdentifier)
         
         context.coordinator.dataSource = Coordinator.DataSource(collectionView: collectionView) { collectionView, indexPath, item in
@@ -141,11 +148,11 @@ public struct CollectionView<Section: Hashable, Item: Hashable, Cell: View>: UIV
             return hostCell
         }
         
-        reloadData(context: context)
+        reloadData(in: collectionView, context: context)
         return collectionView
     }
     
     public func updateUIView(_ uiView: UICollectionView, context: Context) {
-        reloadData(context: context, animated: true)
+        reloadData(in: uiView, context: context, animated: true)
     }
 }
