@@ -7,6 +7,16 @@
 import SwiftUI
 import SwiftUICollection
 
+extension Button {
+    func cardButtonStyle() -> some View {
+        #if os(tvOS)
+        return self.buttonStyle(cardButtonStyle())
+        #else
+        return self
+        #endif
+    }
+}
+
 struct Shelf: View {
     typealias Row = CollectionRow<Int, String>
     
@@ -35,10 +45,11 @@ struct Shelf: View {
             GeometryReader { geometry in
                 Button(action: {}) {
                     Text(item)
+                        .foregroundColor(.black)
                         .frame(width: geometry.size.width, height: geometry.size.height)
                         .background(Color.blue)
                 }
-                .buttonStyle(CardButtonStyle())
+                .cardButtonStyle()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
