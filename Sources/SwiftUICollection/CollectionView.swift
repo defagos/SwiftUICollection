@@ -79,10 +79,10 @@ public struct CollectionView<Section: Hashable, Item: Hashable, Cell: View>: UIV
         fileprivate var dataSource: DataSource? = nil
         fileprivate var sectionLayoutProvider: ((Int, NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection)?
         fileprivate var rowsHash: Int? = nil
-        fileprivate var focusable: Bool = false
+        fileprivate var isFocusable: Bool = false
         
         public func collectionView(_ collectionView: UICollectionView, canFocusItemAt indexPath: IndexPath) -> Bool {
-            return focusable
+            return isFocusable
         }
     }
     
@@ -122,10 +122,10 @@ public struct CollectionView<Section: Hashable, Item: Hashable, Cell: View>: UIV
         let rowsHash = rows.hashValue
         if coordinator.rowsHash != rowsHash {
             dataSource.apply(snapshot(), animatingDifferences: animated) {
-                coordinator.focusable = true
+                coordinator.isFocusable = true
                 collectionView.setNeedsFocusUpdate()
                 collectionView.updateFocusIfNeeded()
-                coordinator.focusable = false
+                coordinator.isFocusable = false
             }
             coordinator.rowsHash = rowsHash
         }
