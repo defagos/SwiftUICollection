@@ -49,7 +49,7 @@ public struct CollectionRow<Section: Hashable, Item: Hashable>: Hashable {
     }
 }
 
-public struct CollectionView<Section: Hashable, Item: Hashable, Cell: View>: UIViewRepresentable {
+public struct CollectionView<Section: Hashable, Item: Hashable, Cell: View, SupplementaryView: View>: UIViewRepresentable {
     private class HostCell: UICollectionViewCell {
         private var hostController: UIHostingController<Cell>?
         
@@ -73,12 +73,36 @@ public struct CollectionView<Section: Hashable, Item: Hashable, Cell: View>: UIV
         }
     }
     
+    private class HostSupplementaryView: UICollectionReusableView {
+        private var hostController: UIHostingController<SupplementaryView>?
+        
+        override func prepareForReuse() {
+            if let hostView = hostController?.view {
+                hostView.removeFromSuperview()
+            }
+            hostController = nil
+        }
+        
+        var hostedSupplementaryView: SupplementaryView? {
+            willSet {
+                guard let view = newValue else { return }
+                hostController = UIHostingController(rootView: view, ignoreSafeArea: true)
+                if let hostView = hostController?.view {
+                    hostView.frame = self.bounds
+                    hostView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                    addSubview(hostView)
+                }
+            }
+        }
+    }
+    
     public class Coordinator: NSObject, UICollectionViewDelegate {
         fileprivate typealias DataSource = UICollectionViewDiffableDataSource<Section, Item>
         
         fileprivate var dataSource: DataSource? = nil
         fileprivate var sectionLayoutProvider: ((Int, NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection)?
         fileprivate var rowsHash: Int? = nil
+        fileprivate var registeredSupplementaryViewKinds: [String] = []
         fileprivate var isFocusable: Bool = false
         
         public func collectionView(_ collectionView: UICollectionView, canFocusItemAt indexPath: IndexPath) -> Bool {
@@ -89,13 +113,16 @@ public struct CollectionView<Section: Hashable, Item: Hashable, Cell: View>: UIV
     let rows: [CollectionRow<Section, Item>]
     let sectionLayoutProvider: (Int, NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection
     let cell: (IndexPath, Item) -> Cell
+    let supplementaryView: (String, IndexPath) -> SupplementaryView
     
     public init(rows: [CollectionRow<Section, Item>],
          sectionLayoutProvider: @escaping (Int, NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection,
-         @ViewBuilder cell: @escaping (IndexPath, Item) -> Cell) {
+         @ViewBuilder cell: @escaping (IndexPath, Item) -> Cell,
+         @ViewBuilder supplementaryView: @escaping (String, IndexPath) -> SupplementaryView) {
         self.rows = rows
         self.sectionLayoutProvider = sectionLayoutProvider
         self.cell = cell
+        self.supplementaryView = supplementaryView
     }
     
     private func layout(context: Context) -> UICollectionViewLayout {
@@ -137,15 +164,29 @@ public struct CollectionView<Section: Hashable, Item: Hashable, Cell: View>: UIV
     
     public func makeUIView(context: Context) -> UICollectionView {
         let cellIdentifier = "hostCell"
+        let supplementaryViewIdentifier = "hostSupplementaryView"
         
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout(context: context))
         collectionView.delegate = context.coordinator
         collectionView.register(HostCell.self, forCellWithReuseIdentifier: cellIdentifier)
         
-        context.coordinator.dataSource = Coordinator.DataSource(collectionView: collectionView) { collectionView, indexPath, item in
+        let dataSource = Coordinator.DataSource(collectionView: collectionView) { collectionView, indexPath, item in
             let hostCell = collectionView.dequeueReusableCell(withReuseIdentifier: cellIdentifier, for: indexPath) as? HostCell
             hostCell?.hostedCell = cell(indexPath, item)
             return hostCell
+        }
+        context.coordinator.dataSource = dataSource
+        
+        dataSource.supplementaryViewProvider = { collectionView, kind, indexPath in
+            let coordinator = context.coordinator
+            if !coordinator.registeredSupplementaryViewKinds.contains(kind) {
+                collectionView.register(HostSupplementaryView.self, forSupplementaryViewOfKind: kind, withReuseIdentifier: supplementaryViewIdentifier)
+                coordinator.registeredSupplementaryViewKinds.append(kind)
+            }
+            
+            guard let view = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: supplementaryViewIdentifier, for: indexPath) as? HostSupplementaryView else { return nil }
+            view.hostedSupplementaryView = supplementaryView(kind, indexPath)
+            return view
         }
         
         reloadData(in: collectionView, context: context)

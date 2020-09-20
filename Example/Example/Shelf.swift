@@ -42,10 +42,17 @@ struct Shelf: View {
             let groupSize = NSCollectionLayoutSize(widthDimension: .absolute(320), heightDimension: .absolute(180))
             let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
             
+            let header = NSCollectionLayoutBoundarySupplementaryItem(
+                layoutSize: NSCollectionLayoutSize(widthDimension: .fractionalWidth(1), heightDimension: .absolute(44)),
+                elementKind: UICollectionView.elementKindSectionHeader,
+                alignment: .topLeading
+            )
+            
             let section = NSCollectionLayoutSection(group: group)
             section.contentInsets = NSDirectionalEdgeInsets(top: 20, leading: 0, bottom: 20, trailing: 0)
             section.interGroupSpacing = 40
             section.orthogonalScrollingBehavior = .continuous
+            section.boundarySupplementaryItems = [header]
             return section
         } cell: { indexPath, item in
             GeometryReader { geometry in
@@ -57,6 +64,8 @@ struct Shelf: View {
                 }
                 .cardButtonStyle()
             }
+        } supplementaryView: { kind, indexPath in
+            Text("Section \(indexPath.section)")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea(.all)
